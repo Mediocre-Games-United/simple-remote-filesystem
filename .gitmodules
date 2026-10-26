@@ -1,0 +1,3 @@
+[submodule "cbu"]
+	path = cbu
+	url = https://github.com/Mediocre-Games-United/cpp-baseutils.git
