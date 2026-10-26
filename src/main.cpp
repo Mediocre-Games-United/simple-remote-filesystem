@@ -2,6 +2,9 @@
 #include "config_file.hpp"
 #include "file.hpp"
 #include "logger.hpp"
+#include "parser_with_cache.hpp"
+#include <filesystem>
+#include <format>
 #define FUSE_USE_VERSION 31
 #include <fuse3/fuse.h>
 #include <errno.h>
@@ -13,29 +16,30 @@
 static const char contents[] = "Hello from my filesystem!\n";
 fpath target_read_path;
 
-static int fs_getattr(const char *path, struct stat *st,
+static int fs_getattr(const char *raw_path, struct stat *st,
                       struct fuse_file_info *fi)
 {
     (void)fi;
     memset(st, 0, sizeof(*st));
 
-    if (strcmp(path, "/") == 0) {
-        st->st_mode = S_IFDIR | 0555;
-        st->st_nlink = 2;
-        return 0;
-    }
-
-    if (strcmp(path, "/hello.txt") == 0) {
+    ParserResult res = get_file_attr_with_cache(current_config.rclone_path,raw_path);
+    if (!res.exists) return -ENOENT;
+    if (res.is_file) {
         st->st_mode = S_IFREG | 0444;
         st->st_nlink = 1;
-        st->st_size = sizeof(contents) - 1;
+        st->st_size = res.filesize;
+        return 0;
+    }
+    if (res.is_directory) {
+        st->st_mode = S_IFDIR | 0555;
+        st->st_nlink = 2;
         return 0;
     }
 
     return -ENOENT;
 }
 
-static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int fs_readdir(const char *raw_path, void *buf, fuse_fill_dir_t filler,
                       off_t offset, struct fuse_file_info *fi,
                       enum fuse_readdir_flags flags)
 {
@@ -43,24 +47,23 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     (void)fi;
     (void)flags;
 
-    if (strcmp(path, "/") != 0)
-        return -ENOENT;
+    vector<string> opts{};
+    ParserResult res = list_dir_with_cache(current_config.rclone_path,raw_path,opts);
+
 
     filler(buf, ".", NULL, 0, fuse_fill_dir_flags(0));
     filler(buf, "..", NULL, 0, fuse_fill_dir_flags(0));
-    filler(buf, "hello.txt", NULL, 0, fuse_fill_dir_flags(0));
+    for (auto n : opts) {
+        cbu::log_debug(std::format("Add opt {}",n));
+        filler(buf,n.c_str(),NULL,0,fuse_fill_dir_flags(0));
+    }
+
     return 0;
 }
 
 static int fs_open(const char *path, struct fuse_file_info *fi)
 {
-    if (strcmp(path, "/hello.txt") != 0)
-        return -ENOENT;
-
-    if ((fi->flags & O_ACCMODE) != O_RDONLY)
-        return -EACCES;
-
-    return 0;
+    return -ENOENT;
 }
 
 static int fs_read(const char *path, char *buf, size_t size, off_t offset,
@@ -114,8 +117,7 @@ int main(int argc, char *argv[])
             (char*) "-f",
             (char*) mountpoint.c_str(),
             (char*) "-o",
-            (char*) "allow_other,default_permissions",
-            NULL
+            (char*) "allow_other,default_permissions"
         };
         int fuse_argc = sizeof(fuse_argv) / sizeof(char*);
         return fuse_main(fuse_argc, fuse_argv, &operations, NULL);
@@ -130,12 +132,12 @@ int main(int argc, char *argv[])
 
     fpath rclone,tgt;
     cbu::cli_input("Enter the directory of the remote filesystem such as an rclone mountpoint");
-    if (cbu::cli_get_valid_dirpath(&rclone)) {
+    if (!cbu::cli_get_valid_dirpath(&rclone)) {
         cbu::log_error(false,"Cancelled");
         return -1;
     }
     cbu::cli_input("Enter the directory for the target mountpoint");
-    if (cbu::cli_get_valid_dirpath(&tgt)) {
+    if (!cbu::cli_get_valid_dirpath(&tgt)) {
         cbu::log_error(false,"Cancelled");
         return -1;
     }
