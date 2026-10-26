@@ -1,2 +1,8 @@
 .mcc
 .clangd
+
+pkgbuild/src
+pkgbuild/pkg
+
+*.pkg.tar.zst
+*.tar.gz

@@ -1,10 +1,16 @@
+#include "config_file.hpp"
+#include "file.hpp"
+#include "logger.hpp"
 #define FUSE_USE_VERSION 31
 #include <fuse3/fuse.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 
+#include "command_parser.hpp"
+
 static const char contents[] = "Hello from my filesystem!\n";
+fpath target_read_path;
 
 static int fs_getattr(const char *path, struct stat *st,
                       struct fuse_file_info *fi)
@@ -85,5 +91,26 @@ static const struct fuse_operations operations = {
 
 int main(int argc, char *argv[])
 {
-    return fuse_main(argc, argv, &operations, NULL);
+    auto out = cbu::parse_args(argc,argv,{'d'},{});
+    if (!out.valid) {
+        cbu::log_error(false,"Command parser returned an invalid state!");
+        return -1;
+    }
+    if (!out.can_proceed) {
+        return 0;
+    }
+
+    if (out.flags.contains('d')) {
+        if (!current_config) {
+            cbu::log_error(false,"Invalid config!");
+            return -1;
+        }
+
+        string mountpoint = cbu::path_to_utf8(current_config.mount_path);
+        char *fuse_argv[] = {(char*) "launcher",(char*) "-f",(char*) mountpoint.c_str()};
+        int fuse_argc = sizeof(fuse_argv) / sizeof(char*);
+        return fuse_main(fuse_argc, fuse_argv, &operations, NULL);
+    }
+
+    return 0;
 }
