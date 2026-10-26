@@ -1,3 +1,4 @@
+#include "cli.hpp"
 #include "config_file.hpp"
 #include "file.hpp"
 #include "logger.hpp"
@@ -100,6 +101,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    read_config();
     if (out.flags.contains('d')) {
         if (!current_config) {
             cbu::log_error(false,"Invalid config!");
@@ -107,10 +109,41 @@ int main(int argc, char *argv[])
         }
 
         string mountpoint = cbu::path_to_utf8(current_config.mount_path);
-        char *fuse_argv[] = {(char*) "launcher",(char*) "-f",(char*) mountpoint.c_str()};
+        char *fuse_argv[] = {
+            argv[0],
+            (char*) "-f",
+            (char*) mountpoint.c_str(),
+            (char*) "-o",
+            (char*) "allow_other,default_permissions",
+            NULL
+        };
         int fuse_argc = sizeof(fuse_argv) / sizeof(char*);
         return fuse_main(fuse_argc, fuse_argv, &operations, NULL);
     }
+    if (!current_config) {
+        cbu::log_warn("No valid config exists for current user");
+    }
+    bool res;
+    cbu::cli_input("Create a config for this user? (default false)");
+    cbu::cli_get_valid_bool(&res,true);
+    if (!res) return 0;
+
+    fpath rclone,tgt;
+    cbu::cli_input("Enter the directory of the remote filesystem such as an rclone mountpoint");
+    if (cbu::cli_get_valid_dirpath(&rclone)) {
+        cbu::log_error(false,"Cancelled");
+        return -1;
+    }
+    cbu::cli_input("Enter the directory for the target mountpoint");
+    if (cbu::cli_get_valid_dirpath(&tgt)) {
+        cbu::log_error(false,"Cancelled");
+        return -1;
+    }
+
+    current_config.mount_path = tgt;
+    current_config.rclone_path = rclone;
+    update_config();
+    cbu::log_success("Config updated! Restart simplerfs to apply changes.");
 
     return 0;
 }

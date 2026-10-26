@@ -17,6 +17,6 @@ package() {
     install -Dm755 "export/launcher" "$pkgdir/usr/bin/simplerfs"
 
     cd "$srcdir/simple-remote-filesystem"
-    install -Dm644 "simple-remote-filesystem.service" \
-    "$pkgdir/usr/lib/systemd/system/simple-remote-filesystem.service"
+    install -Dm644 "simplerfs.service" \
+    "$pkgdir/usr/lib/systemd/system/simplerfs.service"
 }
