@@ -1,3 +1,3 @@
 #pragma once
 
-#define APP_NAME simplerfs
+#define APP_NAME "simplerfs"
