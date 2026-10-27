@@ -134,6 +134,15 @@ static void check_attr_from_fs(fpath abs_path,fpath cache_path) {
         copy_attr_from_src(abs_path,cache_path);
         return;
     }
+    if (!std::filesystem::exists(abs_path)) {
+        std::filesystem::remove_all(cache_path);
+        std::lock_guard<std::mutex> lock{meta_lock};
+        if (current_meta.filesizes.contains(abs_path)) current_meta.filesizes.erase(abs_path);
+        if (current_meta.downloaded_files.contains(abs_path)) current_meta.downloaded_files.erase(abs_path);
+        save_meta();
+
+        return;
+    }
 
     auto src_stamp = std::filesystem::last_write_time(abs_path);
     auto cache_stamp = std::filesystem::last_write_time(cache_path);
@@ -160,7 +169,7 @@ void background_checks() {
     std::lock_guard<std::mutex> lock{attr_lock};
     for (auto &[abs_path,obj] : attr_recheck_queue) {
         fpath cache_path = obj.cache_path;
-        if (!std::filesystem::exists(cache_path) or !std::filesystem::exists(abs_path)) continue;
+        if (!std::filesystem::exists(cache_path)) continue;
         if (std::filesystem::is_directory(cache_path)) {
             recurse_fs_dir_checks(abs_path,cache_path);
             continue;

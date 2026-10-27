@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
         };
         int fuse_argc = sizeof(fuse_argv) / sizeof(char*);
 
+        read_meta();
         start_background();
         int code = fuse_main(fuse_argc, fuse_argv, &operations, NULL);
 
