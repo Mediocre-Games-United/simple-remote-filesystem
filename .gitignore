@@ -6,3 +6,5 @@ pkgbuild/pkg
 
 *.pkg.tar.zst
 *.tar.gz
+
+latest
