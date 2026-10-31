@@ -1,4 +1,5 @@
 #include "background.hpp"
+#include "cbu_state.hpp"
 #include "cli.hpp"
 #include "config_file.hpp"
 #include "file.hpp"
@@ -188,3 +189,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+cbu::GlobalCBUState cbu::global_state;

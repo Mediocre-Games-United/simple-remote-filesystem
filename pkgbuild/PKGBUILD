@@ -7,7 +7,7 @@ depends=("fuse3")
 options=('!debug')
 makedepends=("tar" "git")
 
-source=('git+https://github.com/Mediocre-Games-United/simple-remote-filesystem.git' 'bin.tar.gz::https://github.com/Mediocre-Games-United/simple-remote-filesystem/releases/download/v0.1.0/mcc-release-v0.1.0-linux-x86_64.tar.gz')
+source=('git+https://github.com/Mediocre-Games-United/simple-remote-filesystem.git' 'bin.tar.gz::https://github.com/Mediocre-Games-United/simple-remote-filesystem/releases/download/v0.1.0/srf-release-v0.1.0-linux-x86_64.tar.gz')
 sha256sums=('SKIP' 'SKIP')
 
 package() {

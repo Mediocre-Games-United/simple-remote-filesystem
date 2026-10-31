@@ -3,6 +3,7 @@
 
 pkgbuild/src
 pkgbuild/pkg
+pkgbuild/simple-remote-filesystem
 
 *.pkg.tar.zst
 *.tar.gz
