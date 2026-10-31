@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/
+User=root
 ExecStart=/usr/bin/simplerfs -d
 Restart=on-failure
 RestartSec=5
