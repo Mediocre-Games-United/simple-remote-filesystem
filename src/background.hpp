@@ -1,4 +1,6 @@
 #pragma once
 
-void start_background();
+#include "base_types.hpp"
+
+void start_background(fpath abs_root);
 void end_background();

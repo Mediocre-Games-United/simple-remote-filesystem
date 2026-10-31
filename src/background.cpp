@@ -7,6 +7,7 @@
 static std::thread bg;
 static std::atomic<bool> should_quit = false;
 static size_t check_countdown;
+static fpath abs_root;
 
 static void thread_func() {
     while (true) {
@@ -16,14 +17,15 @@ static void thread_func() {
 
         if (check_countdown <= 0) {
             check_countdown = 100;
-            background_checks();
+            background_checks(abs_root);
         }
         check_countdown -= 1;
     }
 }
 
 
-void start_background() {
+void start_background(fpath r) {
+    abs_root = r;
     bg = std::thread(thread_func);
 }
 void end_background() {

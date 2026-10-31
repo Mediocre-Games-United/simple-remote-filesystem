@@ -4,6 +4,8 @@
 #include "logger.hpp"
 #include <filesystem>
 #include <format>
+#define FUSE_USE_VERSION 31
+#include <fuse3/fuse.h>
 #include <mutex>
 #include <system_error>
 #include <unordered_set>
@@ -155,6 +157,8 @@ static bool copy_attr_from_src(const fpath& abs_path, const fpath& cache_path) {
         cbu::log_warn(std::format("Could not install cache file '{}': {}",
                                   cbu::path_to_utf8(cache_path), ec.message()));
         return false;
+    } else {
+        // fuse_invalidate_path()
     }
 
     std::error_code size_ec;
@@ -174,7 +178,7 @@ static bool copy_attr_from_src(const fpath& abs_path, const fpath& cache_path) {
     return true;
 }
 
-static void check_attr_from_fs(fpath abs_path,fpath cache_path) {
+static void check_attr_from_fs(fpath abs_root,fpath abs_path,fpath cache_path) {
     if (!std::filesystem::exists(cache_path)) {
         copy_attr_from_src(abs_path,cache_path);
         return;
@@ -187,6 +191,11 @@ static void check_attr_from_fs(fpath abs_path,fpath cache_path) {
     }
 
     if (!abs_exists) {
+        if (cbu::dir_is_empty(abs_root)) {
+            cbu::log_verbose("Root path is empty! Skipping delete operations...");
+
+            return;
+        }
         cbu::log_verbose("Absolute does not exist, removing cache");
 
         std::filesystem::remove_all(cache_path);
@@ -208,19 +217,19 @@ static void check_attr_from_fs(fpath abs_path,fpath cache_path) {
 }
 
 
-static void recurse_fs_dir_checks(fpath abs_path,fpath cache_path) {
+static void recurse_fs_dir_checks(fpath abs_root,fpath abs_path,fpath cache_path) {
     for (auto f : cbu::iterate_dir(abs_path)) {
         fpath relative = std::filesystem::relative(f,abs_path);
 
-        if (std::filesystem::is_directory(f)) recurse_fs_dir_checks(f,cache_path / relative);
+        if (std::filesystem::is_directory(f)) recurse_fs_dir_checks(abs_root,f,cache_path / relative);
         if (!std::filesystem::is_regular_file(f)) continue;
 
-        check_attr_from_fs(f,cache_path / relative);
+        check_attr_from_fs(abs_root,f,cache_path / relative);
     }
 }
 static std::mutex attr_lock{};
 static umap<fpath,CacheObject> attr_recheck_queue{};
-void background_checks() {
+void background_checks(fpath abs_root) {
     attr_lock.lock();
     auto copy = attr_recheck_queue;
     attr_recheck_queue.clear();
@@ -231,11 +240,11 @@ void background_checks() {
             fpath cache_path = obj.cache_path;
             if (!std::filesystem::exists(cache_path)) continue;
             if (std::filesystem::is_directory(cache_path)) {
-                recurse_fs_dir_checks(abs_path,cache_path);
+                recurse_fs_dir_checks(abs_root,abs_path,cache_path);
                 continue;
             }
 
-            check_attr_from_fs(abs_path,cache_path);
+            check_attr_from_fs(abs_root,abs_path,cache_path);
         }
     } catch (std::filesystem::filesystem_error &err) {
         cbu::log_error(false,std::format("Filesystem error: '{}'",err.what()));

@@ -9,7 +9,7 @@ struct ParserResult {
     bool is_directory = false;
     size_t filesize = 0;
 };
-void background_checks();
+void background_checks(fpath abs_root);
 void read_meta();
 
 ParserResult get_file_attr_with_cache(fpath abs,const char *rel);

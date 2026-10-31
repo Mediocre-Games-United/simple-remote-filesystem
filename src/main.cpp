@@ -14,7 +14,6 @@
 
 #include "command_parser.hpp"
 
-static const char contents[] = "Hello from my filesystem!\n";
 fpath target_read_path;
 
 static int fs_getattr(const char *raw_path, struct stat *st,
@@ -156,7 +155,7 @@ int main(int argc, char *argv[])
         int fuse_argc = sizeof(fuse_argv) / sizeof(char*);
 
         read_meta();
-        start_background();
+        start_background(current_config.rclone_path);
         int code = fuse_main(fuse_argc, fuse_argv, &operations, NULL);
 
         end_background();
